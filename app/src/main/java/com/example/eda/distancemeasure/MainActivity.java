@@ -99,7 +99,7 @@ public class MainActivity extends AppCompatActivity {
                 cameraFile);
 
         Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        // intent.putExtra(MediaStore.EXTRA_OUTPUT, cameraUri);
+        intent.putExtra(MediaStore.EXTRA_OUTPUT, cameraUri);
         startActivityForResult(intent, RESULT_CAMERA);
     }
 
@@ -108,10 +108,13 @@ public class MainActivity extends AppCompatActivity {
                                     int resultCode, Intent intent) {
         if (requestCode == RESULT_CAMERA) {
 
-            if (   intent.getExtras() != null ) {
-                System.out.println("intent.getExtras() != null");
-                Bitmap bitmap = (Bitmap) intent.getExtras().get("data");
-                imageView.setImageBitmap(bitmap);
+            if(cameraUri != null){
+                imageView.setImageURI(cameraUri);
+
+                registerDatabase(filePath);
+            }
+            else{
+                Log.d("debug","cameraUri == null");
             }
         }
     }
