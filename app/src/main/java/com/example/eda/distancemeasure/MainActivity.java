@@ -28,16 +28,20 @@ import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity {
 
-    private final static int RESULT_CAMERA = 1001;
+    private final static int REQUEST_CAMERA = 1001;
     private final static int REQUEST_PERMISSION = 1002;
     private ImageView imageView;
     private Uri cameraUri;
     private String filePath;
+    private  String Key1 = "Bitmap1";
+    private  String Ket2 = "Bitmap2";
+    private  Bitmap color_img;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        imageView = findViewById(R.id.image_view);
 
         //stereoボタンを押すとステレオマッチング画面に切り替わります
         Button stereo_button = findViewById(R.id.stereo_button);
@@ -45,6 +49,9 @@ public class MainActivity extends AppCompatActivity {
                                                  @Override
                                                  public void onClick(View view) {
                                                      StereoMatchingMode stereofragment = new StereoMatchingMode();
+                                                     Bundle args = new Bundle();
+                                                     args.putParcelable(Key1,color_img);
+                                                     stereofragment.setArguments(args);
                                                      getSupportFragmentManager().beginTransaction()
                                                              .replace(R.id.container, stereofragment)
                                                              .commit();
@@ -66,7 +73,7 @@ public class MainActivity extends AppCompatActivity {
 
         //photoボタンを押すと撮影画面に切り替わります
         Button photo_button = findViewById(R.id.photo_button);
-        caliba_button.setOnClickListener(new View.OnClickListener() {
+        photo_button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 if (Build.VERSION.SDK_INT >= 23) {
@@ -82,16 +89,19 @@ public class MainActivity extends AppCompatActivity {
     private void cameraIntent(){
         Log.d("debug","cameraIntent()");
 
+        // 保存先のフォルダーを作成
         File cameraFolder = new File(
                 Environment.getExternalStoragePublicDirectory(
                         Environment.DIRECTORY_PICTURES),"IMG");
         cameraFolder.mkdirs();
 
+        // 保存ファイル名
         String fileName = new SimpleDateFormat(
                 "ddHHmmss", Locale.US).format(new Date());
         filePath = String.format("%s/%s.jpg", cameraFolder.getPath(),fileName);
         Log.d("debug","filePath:"+filePath);
 
+        // capture画像のファイルパス
         File cameraFile = new File(filePath);
         cameraUri = FileProvider.getUriForFile(
                 MainActivity.this,
@@ -99,22 +109,20 @@ public class MainActivity extends AppCompatActivity {
                 cameraFile);
 
         Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        intent.putExtra(MediaStore.EXTRA_OUTPUT, cameraUri);
-        startActivityForResult(intent, RESULT_CAMERA);
+        // intent.putExtra(MediaStore.EXTRA_OUTPUT, cameraUri);
+        startActivityForResult(intent, REQUEST_CAMERA);
+
+        Log.d("debug","startActivityForResult()");
     }
 
     @Override
     protected void onActivityResult(int requestCode,
                                     int resultCode, Intent intent) {
-        if (requestCode == RESULT_CAMERA) {
-
-            if(cameraUri != null){
-                imageView.setImageURI(cameraUri);
-
-                registerDatabase(filePath);
-            }
-            else{
-                Log.d("debug","cameraUri == null");
+        super.onActivityResult(requestCode, resultCode, intent);
+        if (requestCode == REQUEST_CAMERA) {
+            if(intent.getExtras() != null){
+                color_img =  (Bitmap) intent.getExtras().get("data");
+                imageView.setImageBitmap(color_img);
             }
         }
     }
