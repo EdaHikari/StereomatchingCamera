@@ -170,7 +170,7 @@ public class MainActivity extends AppCompatActivity {
 
             } else {
                 Toast toast = Toast.makeText(this,
-                        "これ以上なにもできません", Toast.LENGTH_SHORT);
+                        "まだ許可されていません", Toast.LENGTH_SHORT);
                 toast.show();
             }
         }

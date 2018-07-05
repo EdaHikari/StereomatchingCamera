@@ -6,6 +6,7 @@ import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.util.Log;
+import android.view.View;
 import android.widget.ImageView;
 
 import org.opencv.android.Utils;
@@ -53,10 +54,9 @@ public class CalibrationMode extends Fragment {
     private Bitmap bitmap;
 
     @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        ImageView imageview = findViewById(R.id.calibrateView);
-        imageview.setImageBitmap(onCalibrate(photo));
+    public void onViewCreated(final View view, Bundle savedInstanceState) {
+        ImageView imageview = (ImageView)view.findViewById(R.id.calibrateView);
+        imageview.setImageBitmap(onImage(bitmap));
     }
 
 
@@ -75,9 +75,7 @@ public class CalibrationMode extends Fragment {
         return mbitmap;
     }
 
-    public Mat onEssential() {
-        Mat right = ImageLoad("right");
-        Mat left = ImageLoad("left");
+    public Mat onEssential(Mat right,Mat left) {
 
         FeatureDetector detector = FeatureDetector.create(FeatureDetector.AKAZE);
         DescriptorExtractor extractor = DescriptorExtractor.create(DescriptorExtractor.AKAZE);
@@ -214,10 +212,4 @@ public class CalibrationMode extends Fragment {
         return undisort;
     }
 
-    public Mat ImageLoad(String name) {
-        Bitmap map = BitmapFactory.decodeResource(getResources(), getResources().getIdentifier( name, "drawable", getPackageName()));
-        Mat mat = new Mat();
-        Utils.bitmapToMat(map, mat);
-        return mat;
-    }
 }
