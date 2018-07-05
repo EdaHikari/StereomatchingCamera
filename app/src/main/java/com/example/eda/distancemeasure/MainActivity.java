@@ -113,7 +113,6 @@ public class MainActivity extends AppCompatActivity {
                 Bitmap bitmap = (Bitmap) intent.getExtras().get("data");
                 imageView.setImageBitmap(bitmap);
             }
-            //registerDatabase(filePath);
         }
     }
 

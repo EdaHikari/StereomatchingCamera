@@ -2,6 +2,7 @@ package com.example.eda.distancemeasure;
 
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -27,19 +28,18 @@ import static org.opencv.imgproc.Imgproc.INTER_AREA;
 
 public class StereoMatchingMode extends Fragment {
 
-    private final static int RESULT_CAMERA = 1001;
-    private final static int REQUEST_PERMISSION = 1002;
     private ImageView imageView;
-    private Uri cameraUri;
     private String filePath;
+    private Bitmap bitmap;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.fragment_stereo_matching_mode);
-        imageView = findViewById(R.id.stereoView);
-
-
+    }
+    @Override
+    public void onViewCreated(final View view, Bundle savedInstanceState) {
+        ImageView imageview = (ImageView)view.findViewById(R.id.stereoView);
+        imageview.setImageBitmap(onImage(bitmap));
     }
 
     public Bitmap onImage(Bitmap bmp) {
@@ -56,6 +56,14 @@ public class StereoMatchingMode extends Fragment {
         matToBitmap(outputFrame,mbitmap);
         return mbitmap;
     }
+
+    public Mat ImageLoad(String name) {
+        Bitmap map = BitmapFactory.decodeResource(getResources(), getResources().getIdentifier( name, "drawable", getPackageName()));
+        Mat mat = new Mat();
+        Utils.bitmapToMat(map, mat);
+        return mat;
+    }
+
     public Mat onStereo(Mat right,Mat left) {
 
     Mat mdisparity = Mat.zeros(right.width(),right.height(),CV_8U);
@@ -68,16 +76,16 @@ public class StereoMatchingMode extends Fragment {
 
     StereoSGBM stereo = StereoSGBM.create(
 
-            0,  //一般には０
-            96, //16の倍数
-            3, //3~11の奇数
-            480,//デフォルトが良い　0
-            240,//デフォルトが良い　0
-            1,//デフォルトが良い　0
-            0,//デフォルトが良い　0
-            0,//デフォルトが良い　0
-            1,//デフォルトの0は使用しない意、使って効果あり
-            1,//デフォルトが良い　1
+            0,
+            96,
+            3,
+            480,
+            240,
+            1,
+            0,
+            0,
+            1,
+            1,
             StereoSGBM.MODE_SGBM
     );
 
