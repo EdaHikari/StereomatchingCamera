@@ -28,18 +28,32 @@ import static org.opencv.imgproc.Imgproc.INTER_AREA;
 
 public class StereoMatchingMode extends Fragment {
 
-    private ImageView imageView;
-    private String filePath;
-    private Bitmap bitmap;
+    static {
+        System.loadLibrary("opencv_java3");
+    }
+
+    private  String Key1 = "Bitmap1";
+    private  String Ket2 = "Bitmap2";
+    private  Bitmap color_img;
+    private  Bitmap mono_img;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (getArguments() != null) {
+            color_img = getArguments().getParcelable(Key1);
+        }
     }
+
+    @Override
+    public View onCreateView(LayoutInflater inflater, ViewGroup container,Bundle savedInstanceState) {
+        return inflater.inflate(R.layout.fragment_stereo_matching_mode, container, false);
+    }
+
     @Override
     public void onViewCreated(final View view, Bundle savedInstanceState) {
         ImageView imageview = (ImageView)view.findViewById(R.id.stereoView);
-        imageview.setImageBitmap(onImage(bitmap));
+        imageview.setImageBitmap(onImage(color_img));
     }
 
     public Bitmap onImage(Bitmap bmp) {
@@ -52,17 +66,12 @@ public class StereoMatchingMode extends Fragment {
 
         Mat outputFrame = onStereo(gray,gray);
 
-        Bitmap mbitmap = Bitmap.createBitmap(mat.width(), mat.height(), Bitmap.Config.ARGB_8888);
+        Bitmap mbitmap = Bitmap.createBitmap(outputFrame.width(), outputFrame.height(), Bitmap.Config.ARGB_8888);
         matToBitmap(outputFrame,mbitmap);
         return mbitmap;
     }
 
-    public Mat ImageLoad(String name) {
-        Bitmap map = BitmapFactory.decodeResource(getResources(), getResources().getIdentifier( name, "drawable", getPackageName()));
-        Mat mat = new Mat();
-        Utils.bitmapToMat(map, mat);
-        return mat;
-    }
+
 
     public Mat onStereo(Mat right,Mat left) {
 
@@ -72,7 +81,6 @@ public class StereoMatchingMode extends Fragment {
     Mat undistortleft = new Mat();
     undistortright = right;
     undistortleft = left;
-
 
     StereoSGBM stereo = StereoSGBM.create(
 
@@ -98,10 +106,9 @@ public class StereoMatchingMode extends Fragment {
         stereo.compute(undistortleft, undistortright, mdisparity);
 
         Core.normalize(mdisparity,undistortright,0,255, Core.NORM_MINMAX,CV_8UC1);
-    // display the result
         Imgproc.cvtColor(undistortright, undistortleft, Imgproc.COLOR_GRAY2BGRA, 4);
         Imgproc.resize(undistortleft, undistortright, undistortright.size());
-        return undistortright;
-}
-
+        System.out.println("OpenCV Mat data:\n" + undistortleft.dump());
+      return undistortleft;
+    }
 }

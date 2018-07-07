@@ -28,6 +28,10 @@ import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity {
 
+    static {
+        System.loadLibrary("opencv_java3");
+    }
+
     private final static int REQUEST_CAMERA = 1001;
     private final static int REQUEST_PERMISSION = 1002;
     private ImageView imageView;
@@ -49,6 +53,13 @@ public class MainActivity extends AppCompatActivity {
                                                  @Override
                                                  public void onClick(View view) {
                                                      StereoMatchingMode stereofragment = new StereoMatchingMode();
+                                                     /*
+                                                     Intent intent = new Intent(this,StereoMatchingMode.);
+                                                     Bundle bundle = new Bundle();
+                                                     bundle.putParcelable(Key1, color_img);
+                                                     intent.putExtras(bundle);
+                                                     startActivity(intent);
+                                                     */
                                                      Bundle args = new Bundle();
                                                      args.putParcelable(Key1,color_img);
                                                      stereofragment.setArguments(args);
@@ -63,8 +74,10 @@ public class MainActivity extends AppCompatActivity {
             caliba_button.setOnClickListener(new View.OnClickListener() {
                                                 @Override
                                                 public void onClick(View view) {
-
                                                     CalibrationMode calibrationfragment = new CalibrationMode();
+                                                    Bundle args = new Bundle();
+                                                    args.putParcelable(Key1,color_img);
+                                                    calibrationfragment.setArguments(args);
                                                     getSupportFragmentManager().beginTransaction()
                                                             .replace(R.id.container, calibrationfragment)
                                                             .commit();
@@ -76,43 +89,14 @@ public class MainActivity extends AppCompatActivity {
         photo_button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if (Build.VERSION.SDK_INT >= 23) {
-                    checkPermission();
-                }
-                else {
                     cameraIntent();
-                }
             }
         });
     }
 
     private void cameraIntent(){
-        Log.d("debug","cameraIntent()");
-
-        // 保存先のフォルダーを作成
-        File cameraFolder = new File(
-                Environment.getExternalStoragePublicDirectory(
-                        Environment.DIRECTORY_PICTURES),"IMG");
-        cameraFolder.mkdirs();
-
-        // 保存ファイル名
-        String fileName = new SimpleDateFormat(
-                "ddHHmmss", Locale.US).format(new Date());
-        filePath = String.format("%s/%s.jpg", cameraFolder.getPath(),fileName);
-        Log.d("debug","filePath:"+filePath);
-
-        // capture画像のファイルパス
-        File cameraFile = new File(filePath);
-        cameraUri = FileProvider.getUriForFile(
-                MainActivity.this,
-                getApplicationContext().getPackageName() + ".fileprovider",
-                cameraFile);
-
         Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        // intent.putExtra(MediaStore.EXTRA_OUTPUT, cameraUri);
         startActivityForResult(intent, REQUEST_CAMERA);
-
-        Log.d("debug","startActivityForResult()");
     }
 
     @Override
@@ -123,65 +107,6 @@ public class MainActivity extends AppCompatActivity {
             if(intent.getExtras() != null){
                 color_img =  (Bitmap) intent.getExtras().get("data");
                 imageView.setImageBitmap(color_img);
-            }
-        }
-    }
-
-    private void registerDatabase(String file) {
-        ContentValues contentValues = new ContentValues();
-        ContentResolver contentResolver = MainActivity.this.getContentResolver();
-        contentValues.put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg");
-        contentValues.put("_data", file);
-        contentResolver.insert(
-                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,contentValues);
-    }
-
-    private void checkPermission(){
-        if (ActivityCompat.checkSelfPermission(this,
-                Manifest.permission.WRITE_EXTERNAL_STORAGE) ==
-                PackageManager.PERMISSION_GRANTED){
-            cameraIntent();
-        }
-        else{
-            requestPermission();
-        }
-    }
-
-    private void requestPermission() {
-        if (ActivityCompat.shouldShowRequestPermissionRationale(this,
-                Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
-            ActivityCompat.requestPermissions(MainActivity.this,
-                    new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
-                    REQUEST_PERMISSION);
-
-        } else {
-            Toast toast = Toast.makeText(this,
-                    "許可されないとアプリが実行できません",
-                    Toast.LENGTH_SHORT);
-            toast.show();
-
-            ActivityCompat.requestPermissions(this,
-                    new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE,},
-                    REQUEST_PERMISSION);
-
-        }
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode,
-                                           @NonNull String[] permissions,
-                                           @NonNull int[] grantResults) {
-
-        Log.d("debug","onRequestPermissionsResult()");
-
-        if (requestCode == REQUEST_PERMISSION) {
-            if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                cameraIntent();
-
-            } else {
-                Toast toast = Toast.makeText(this,
-                        "まだ許可されていません", Toast.LENGTH_SHORT);
-                toast.show();
             }
         }
     }

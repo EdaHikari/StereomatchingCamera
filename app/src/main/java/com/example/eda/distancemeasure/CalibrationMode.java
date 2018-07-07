@@ -6,7 +6,9 @@ import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.ImageView;
 
 import org.opencv.android.Utils;
@@ -50,13 +52,27 @@ public class CalibrationMode extends Fragment {
     static {
         System.loadLibrary("opencv_java3");
     }
+    private  String Key1 = "Bitmap1";
+    private  String Ket2 = "Bitmap2";
+    private  Bitmap color_img;
 
-    private Bitmap bitmap;
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        if (getArguments() != null) {
+            color_img = getArguments().getParcelable(Key1);
+        }
+    }
+
+    @Override
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+        return inflater.inflate(R.layout.fragment_calibration_mode, container, false);
+    }
 
     @Override
     public void onViewCreated(final View view, Bundle savedInstanceState) {
         ImageView imageview = (ImageView)view.findViewById(R.id.calibrateView);
-        imageview.setImageBitmap(onImage(bitmap));
+        imageview.setImageBitmap(onImage(color_img));
     }
 
 
@@ -68,9 +84,9 @@ public class CalibrationMode extends Fragment {
         Imgproc.cvtColor(mat, gray, Imgproc.COLOR_BGR2GRAY);
         Core.normalize(gray, gray, 0, 255, Core.NORM_MINMAX);
 
-        Mat outputFrame = onCalibrate(bitmap);
+        Mat outputFrame = onCalibrate(gray);
 
-        Bitmap mbitmap = Bitmap.createBitmap(mat.width(), mat.height(), Bitmap.Config.ARGB_8888);
+        Bitmap mbitmap = Bitmap.createBitmap(outputFrame.width(), outputFrame.height(), Bitmap.Config.ARGB_8888);
         matToBitmap(outputFrame,mbitmap);
         return mbitmap;
     }
@@ -154,7 +170,7 @@ public class CalibrationMode extends Fragment {
         return output;
     }
 
-    public Mat onCalibrate(Bitmap inputFrame) {
+    public Mat onCalibrate(Mat inputFrame) {
 
         int horizonalCrossCount = 7;
         int verticalCrossCount = 10;
@@ -171,43 +187,35 @@ public class CalibrationMode extends Fragment {
         Size sizea = new Size(horizonalCrossCount, verticalCrossCount);
         Size sizeb = new Size(11, 11);
         Size sizec = new Size(-1, -1);
-        Mat savedImage = new Mat();
         Mat distcofes = Mat.zeros(4, 1, CV_32FC1);
         Mat cameraMatrix = Mat.zeros(3, 3, CV_32FC1);
         List<Mat> t = new ArrayList<>();
         List<Mat> r = new ArrayList<>();
 
-        for (int i = 1; i < 5; i++) {
-            Mat mcheck = new Mat();
-            Utils.bitmapToMat(inputFrame, mcheck);
-            if (i != 1)Imgproc.resize(mcheck, mcheck, savedImage.size());
-            Mat gry = Mat.zeros(mcheck.width(), mcheck.height(), CV_8U);
-            Imgproc.cvtColor(mcheck, gry, COLOR_BGR2GRAY);
-            if (i == 1) mcheck.copyTo(savedImage);
-
-            boolean found = Calib3d.findChessboardCorners(gry, sizea, corners,
+        boolean found = Calib3d.findChessboardCorners(inputFrame, sizea, corners,
                     Calib3d.CALIB_CB_ADAPTIVE_THRESH + Calib3d.CALIB_CB_NORMALIZE_IMAGE + Calib3d.CALIB_CB_FAST_CHECK);
 
-            if (found == true) {
-                Imgproc.cornerSubPix(gry, corners, sizeb, sizec, criteria);
+        if (found == true) {
+                Imgproc.cornerSubPix(inputFrame, corners, sizeb, sizec, criteria);
                 image_point.add(corners);
                 objcts_point.add(objects);
-                drawChessboardCorners(gry, sizea, corners, found);
+                drawChessboardCorners(inputFrame, sizea, corners, found);
                 System.out.println("success");
-            } else {
+        } else {
                 System.out.println("not found.");
-            }
+                return inputFrame;
         }
+
         float[][] dataA = {{320, 0, 160}, {0, 320, 120}, {0, 0, 1} };
         for (int i = 0; i < 3; i++) {
             for (int j = 0; j < 3; j++) {
                 cameraMatrix.put(i,j,dataA[i][j]);
             }
         }
-        calibrateCamera(objcts_point, image_point, savedImage.size(), cameraMatrix, distcofes, r, t);
+        calibrateCamera(objcts_point, image_point, inputFrame.size(), cameraMatrix, distcofes, r, t);
         Mat undisort = new Mat();
-        Mat roi = getOptimalNewCameraMatrix(cameraMatrix, distcofes, savedImage.size(), 1);
-       Imgproc.undistort(savedImage, undisort, roi, distcofes, roi);
+        Mat roi = getOptimalNewCameraMatrix(cameraMatrix, distcofes, inputFrame.size(), 1);
+       Imgproc.undistort(inputFrame, undisort, roi, distcofes, roi);
 
         return undisort;
     }
