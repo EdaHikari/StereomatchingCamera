@@ -1,12 +1,13 @@
 package com.example.eda.distancemeasure;
 
+import android.app.Fragment;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.support.v4.app.Fragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -33,15 +34,18 @@ public class StereoMatchingMode extends Fragment {
     }
 
     private  String Key1 = "Bitmap1";
-    private  String Ket2 = "Bitmap2";
-    private  Bitmap color_img;
-    private  Bitmap mono_img;
+    private  String Key2 = "Bitmap2";
+    private  Bitmap color1_img;
+    private  Bitmap color2_img;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         if (getArguments() != null) {
-            color_img = getArguments().getParcelable(Key1);
+            color1_img = getArguments().getParcelable(Key1);
+            color2_img = getArguments().getParcelable(Key2);
+            if (color1_img != null && color2_img != null) System.out.println("color1_img != null && color2_img != null");
+            else System.out.println("color1_img == null || color2_img == null");
         }
     }
 
@@ -53,18 +57,31 @@ public class StereoMatchingMode extends Fragment {
     @Override
     public void onViewCreated(final View view, Bundle savedInstanceState) {
         ImageView imageview = (ImageView)view.findViewById(R.id.stereoView);
-        imageview.setImageBitmap(onImage(color_img));
+        Button stereo_button = (Button)view.findViewById(R.id.return_button);
+        stereo_button.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent intent = new Intent(getActivity(), MainActivity.class);
+                startActivity(intent);
+            }
+        });
+        imageview.setImageBitmap(onImage(color1_img,color2_img));
     }
 
-    public Bitmap onImage(Bitmap bmp) {
-        Mat mat = new Mat();
-        Utils.bitmapToMat(bmp, mat);
-        Mat gray = Mat.zeros(mat.width(),mat.height(),CV_8U);
+    public Bitmap onImage(Bitmap bmp1,Bitmap bmp2) {
+        Mat mat1 = new Mat();
+        Mat mat2 = new Mat();
+        Utils.bitmapToMat(bmp1, mat1);
+        Utils.bitmapToMat(bmp2, mat2);
+        Mat gray1 = Mat.zeros(mat1.width(),mat1.height(),CV_8U);
+        Mat gray2 = Mat.zeros(mat2.width(),mat2.height(),CV_8U);
 
-        Imgproc.cvtColor(mat, gray, Imgproc.COLOR_BGR2GRAY);
-        Core.normalize(gray, gray, 0, 255, Core.NORM_MINMAX);
+        Imgproc.cvtColor(mat1, gray1, Imgproc.COLOR_BGR2GRAY);
+        Imgproc.cvtColor(mat2, gray2, Imgproc.COLOR_BGR2GRAY);
+        Core.normalize(gray1, gray1, 0, 255, Core.NORM_MINMAX);
+        Core.normalize(gray2, gray2, 0, 255, Core.NORM_MINMAX);
 
-        Mat outputFrame = onStereo(gray,gray);
+        Mat outputFrame = onStereo(gray1,gray2);
 
         Bitmap mbitmap = Bitmap.createBitmap(outputFrame.width(), outputFrame.height(), Bitmap.Config.ARGB_8888);
         matToBitmap(outputFrame,mbitmap);
@@ -73,7 +90,7 @@ public class StereoMatchingMode extends Fragment {
 
 
 
-    public Mat onStereo(Mat right,Mat left) {
+    public Mat onStereo(Mat left,Mat right) {
 
     Mat mdisparity = Mat.zeros(right.width(),right.height(),CV_8U);
 
@@ -98,17 +115,17 @@ public class StereoMatchingMode extends Fragment {
     );
 
     Size sz = new Size();
-        Imgproc.resize(undistortright, undistortright,sz,0.4,0.4,INTER_AREA);
+        //Imgproc.resize(undistortright, undistortright,sz,0.4,0.6,INTER_AREA);
         Imgproc.resize(undistortleft, undistortleft, undistortright.size());
-        Photo.fastNlMeansDenoising(undistortright,undistortright);
-        Photo.fastNlMeansDenoising(undistortleft,undistortleft);
+        //Photo.fastNlMeansDenoising(undistortright,undistortright);
+        //Photo.fastNlMeansDenoising(undistortleft,undistortleft);
         Imgproc.resize(mdisparity, mdisparity, undistortright.size());
         stereo.compute(undistortleft, undistortright, mdisparity);
 
         Core.normalize(mdisparity,undistortright,0,255, Core.NORM_MINMAX,CV_8UC1);
-        Imgproc.cvtColor(undistortright, undistortleft, Imgproc.COLOR_GRAY2BGRA, 4);
-        Imgproc.resize(undistortleft, undistortright, undistortright.size());
-        System.out.println("OpenCV Mat data:\n" + undistortleft.dump());
-      return undistortleft;
+        //Imgproc.cvtColor(undistortright, undistortleft, Imgproc.COLOR_GRAY2BGRA, 4);
+        //Imgproc.resize(undistortleft, undistortright, undistortright.size());
+        //System.out.println("OpenCV Mat data:\n" + undistortleft.dump());
+      return undistortright;
     }
 }

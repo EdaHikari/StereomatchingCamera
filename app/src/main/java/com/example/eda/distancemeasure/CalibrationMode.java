@@ -1,14 +1,15 @@
 package com.example.eda.distancemeasure;
 
+import android.app.Fragment;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
-import android.support.v4.app.Fragment;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.ImageView;
 
 import org.opencv.android.Utils;
@@ -29,8 +30,10 @@ import org.opencv.core.TermCriteria;
 import org.opencv.features2d.DescriptorExtractor;
 import org.opencv.features2d.DescriptorMatcher;
 import org.opencv.features2d.FeatureDetector;
+import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -51,16 +54,25 @@ public class CalibrationMode extends Fragment {
 
     static {
         System.loadLibrary("opencv_java3");
+        System.loadLibrary("native-lib");
     }
+    public native String stringFromJNI(int width, int height, byte[] yuv);
+
     private  String Key1 = "Bitmap1";
     private  String Ket2 = "Bitmap2";
     private  Bitmap color_img;
+
+    private DataRecode dataMethod;
+    MatOfPoint2f corners;
+    Mat distcofes;
+    Mat cameraMatrix;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         if (getArguments() != null) {
             color_img = getArguments().getParcelable(Key1);
+            dataMethod = new DataRecode(getActivity(),"imagePoints");
         }
     }
 
@@ -73,6 +85,26 @@ public class CalibrationMode extends Fragment {
     public void onViewCreated(final View view, Bundle savedInstanceState) {
         ImageView imageview = (ImageView)view.findViewById(R.id.calibrateView);
         imageview.setImageBitmap(onImage(color_img));
+
+        Button returnButton = (Button)view.findViewById(R.id.return_button);
+        returnButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                //Intent intent = new Intent(getActivity(), MainActivity.class);
+                //startActivity(intent);
+                dataMethod.loadData("mat");
+            }
+        });
+
+        Button yesButton = (Button)view.findViewById(R.id.yes_button);
+        yesButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                dataMethod.saveData("mat",corners);
+                //dataMethod.loadData("mat");
+                System.out.println("Imgcodecs.imwrite success!!!!!!!!!!!!!!!!!!!!!!!!!");
+            }
+        });
     }
 
 
@@ -91,85 +123,6 @@ public class CalibrationMode extends Fragment {
         return mbitmap;
     }
 
-    public Mat onEssential(Mat right,Mat left) {
-
-        FeatureDetector detector = FeatureDetector.create(FeatureDetector.AKAZE);
-        DescriptorExtractor extractor = DescriptorExtractor.create(DescriptorExtractor.AKAZE);
-        DescriptorMatcher matcher = DescriptorMatcher.create(DescriptorMatcher.BRUTEFORCE);
-        MatOfKeyPoint key1 = new MatOfKeyPoint();
-        MatOfKeyPoint key2 = new MatOfKeyPoint();
-        Scalar color = new Scalar(0,0,255);
-        Mat description1 = new Mat(right.rows(),right.cols(),right.type());
-        Mat description2 = new Mat(left.rows(),left.cols(),left.type());
-
-        detector.detect(right,key1);
-        detector.detect(left,key2);
-        extractor.compute(right,key1,description1);
-        extractor.compute(left,key2,description2);
-
-        MatOfDMatch matche = new MatOfDMatch();
-        MatOfDMatch dmatche12 = new MatOfDMatch();
-        MatOfDMatch dmatche21 = new MatOfDMatch();
-        List<MatOfDMatch> matches = new ArrayList<MatOfDMatch>();
-        List<DMatch> dmatch = new ArrayList<DMatch>();
-
-        matcher.match(description1,description2,dmatche12);
-        matcher.match(description2,description1,dmatche21);
-        List<DMatch> ldm_srcToBase = dmatche12.toList();
-        List<DMatch> ldm_baseToSrc = dmatche21.toList();
-
-        for(int i=0; i<ldm_srcToBase.size(); i++) {
-
-            DMatch forward = ldm_srcToBase.get(i);
-            DMatch backward = ldm_baseToSrc.get(forward.trainIdx);
-
-            if (backward.trainIdx == forward.queryIdx) {
-                dmatch.add(forward);
-            }
-        }
-        matche.fromList(dmatch);
-
-        Mat output = new Mat(right.rows()*2,right.cols()*2,right.type());
-        drawMatches(right, key1, left, key2, matche, output);
-
-
-        List<KeyPoint> keypoints1_l = key1.toList();
-        List<KeyPoint> keypoints2_l = key2.toList();
-        List<Point> plist1 = new ArrayList<Point>();
-        List<Point> plist2 = new ArrayList<Point>();
-
-        MatOfPoint2f pP1 = new MatOfPoint2f();
-        MatOfPoint2f pP2 = new MatOfPoint2f();
-        Point p = new Point();
-        Point pP = new Point(0,0);
-        Mat ip =  new Mat(3,1, CV_64FC1);
-        Mat non = Mat.zeros(3, 1, CV_64FC1);
-
-        if(dmatch.size()>100) {
-            for (int i = 0; i < dmatch.size(); i++) {
-                DMatch forward = dmatch.get(i);
-
-                p.x = keypoints1_l.get(forward.queryIdx).pt.x;
-                p.y = keypoints1_l.get(forward.queryIdx).pt.y;
-                plist1.add(p);
-
-                p.x = keypoints2_l.get(forward.trainIdx).pt.x;
-                p.y = keypoints2_l.get(forward.trainIdx).pt.y;
-                plist2.add(p);
-
-            }
-            pP1.fromList(plist1);
-            pP2.fromList(plist2);
-
-            Mat mask = new Mat();
-            Mat essentialMat = findEssentialMat(pP1, pP2, 1.0, pP, RANSAC, 0.9999, 0.003, mask);
-            Mat rotation = new Mat();
-            Mat translation = new Mat();
-            recoverPose(essentialMat, pP1, pP2, rotation, translation);
-        }
-        return output;
-    }
-
     public Mat onCalibrate(Mat inputFrame) {
 
         int horizonalCrossCount = 7;
@@ -182,42 +135,40 @@ public class CalibrationMode extends Fragment {
             objects.push_back(new MatOfPoint3f(new Point3(j / horizonalCrossCount, j % verticalCrossCount, 0.0f)));
         }
 
-        MatOfPoint2f corners = new MatOfPoint2f();
+        corners = new MatOfPoint2f();
         TermCriteria criteria = new TermCriteria(TermCriteria.MAX_ITER | TermCriteria.EPS, 30, 0.1);
         Size sizea = new Size(horizonalCrossCount, verticalCrossCount);
         Size sizeb = new Size(11, 11);
         Size sizec = new Size(-1, -1);
-        Mat distcofes = Mat.zeros(4, 1, CV_32FC1);
-        Mat cameraMatrix = Mat.zeros(3, 3, CV_32FC1);
+        distcofes = Mat.zeros(4, 1, CV_32FC1);
+        cameraMatrix = Mat.zeros(3, 3, CV_32FC1);
         List<Mat> t = new ArrayList<>();
         List<Mat> r = new ArrayList<>();
 
         boolean found = Calib3d.findChessboardCorners(inputFrame, sizea, corners,
                     Calib3d.CALIB_CB_ADAPTIVE_THRESH + Calib3d.CALIB_CB_NORMALIZE_IMAGE + Calib3d.CALIB_CB_FAST_CHECK);
 
-        if (found == true) {
-                Imgproc.cornerSubPix(inputFrame, corners, sizeb, sizec, criteria);
-                image_point.add(corners);
-                objcts_point.add(objects);
-                drawChessboardCorners(inputFrame, sizea, corners, found);
-                System.out.println("success");
-        } else {
-                System.out.println("not found.");
-                return inputFrame;
-        }
+        if (!found) return inputFrame;
+        else {
+            Imgproc.cornerSubPix(inputFrame, corners, sizeb, sizec, criteria);
+            image_point.add(corners);
+            objcts_point.add(objects);
+            drawChessboardCorners(inputFrame, sizea, corners, found);
+            System.out.println("success");
 
-        float[][] dataA = {{320, 0, 160}, {0, 320, 120}, {0, 0, 1} };
-        for (int i = 0; i < 3; i++) {
-            for (int j = 0; j < 3; j++) {
-                cameraMatrix.put(i,j,dataA[i][j]);
+            float[][] dataA = {{320, 0, 160}, {0, 320, 120}, {0, 0, 1}};
+            for (int i = 0; i < 3; i++) {
+                for (int j = 0; j < 3; j++) {
+                    cameraMatrix.put(i, j, dataA[i][j]);
+                }
             }
-        }
-        calibrateCamera(objcts_point, image_point, inputFrame.size(), cameraMatrix, distcofes, r, t);
-        Mat undisort = new Mat();
-        Mat roi = getOptimalNewCameraMatrix(cameraMatrix, distcofes, inputFrame.size(), 1);
-       Imgproc.undistort(inputFrame, undisort, roi, distcofes, roi);
+            calibrateCamera(objcts_point, image_point, inputFrame.size(), cameraMatrix, distcofes, r, t);
+            Mat undisort = new Mat();
+            //Mat roi = getOptimalNewCameraMatrix(cameraMatrix, distcofes, inputFrame.size(), 1);
+            Imgproc.undistort(inputFrame, undisort, cameraMatrix, distcofes, cameraMatrix);
 
-        return undisort;
+            return undisort;
+        }
     }
 
 }
